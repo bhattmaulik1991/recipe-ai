@@ -8,11 +8,20 @@ const schema = a.schema({
 
   askBedrock: a
     .query()
-    .arguments({ ingredients: a.string().array() })
+    .arguments({ prompts: a.string().array() })
     .returns(a.ref("BedrockResponse"))
     .authorization(allow => allow.publicApiKey())
     .handler(
       a.handler.custom({ entry: "./bedrock.js", dataSource: "bedrockDS" })
+    ),
+
+  getImage: a
+    .query()
+    .arguments({ prompts: a.string().array() })
+    .returns(a.ref("BedrockResponse"))
+    .authorization(allow => allow.publicApiKey())
+    .handler(
+      a.handler.custom({ entry: "./getImage.js", dataSource: "bedrockDS" })
     ),
 });
 

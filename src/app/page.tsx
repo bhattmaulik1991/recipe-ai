@@ -1,24 +1,66 @@
 "use client";
 
-import React, { FormEvent, useState } from "react";
+import React, { useState } from "react";
 import { Card } from "@aws-amplify/ui-react";
-import { generateRecipe } from "./actions";
+import { callBedRock, getImage } from "./actions";
 
+const gender_map = {
+  Womens: "of a female ",
+  Mens: "of a male "
+}
 
 export default function Home() {
-  const [result, setResult] = useState<string>("");
+  const [result, setResult] = useState<string[]>([]);
+  const [images, setImages] = useState<string[]>([]);
   const [loading, setloading] = useState(false);
+  // I am a male consultant in my 30s traveling to New York next week. What kind of outfit should I wear on my first day in the office?
+  const [customerInput, setCustomerInput] = useState("");
 
-  const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
+  const suggestSttles = async (e: any) => {
     setloading(true);
-    event.preventDefault();
-
+    e.preventDefault();
     try {
-      const formData = new FormData(event.currentTarget);
-      const data = await generateRecipe(formData);
-      const recipe = typeof data === "string" ? data : "No data returned";
+      const entityExtraction = `Find person age group, gender, season and the location in the customer input.
+        Instructions:
+        The age group can be one of the following: 10-20, 20-30, 30-50, 50+
+        The gender can be one of the following: Mens, Womens, Other
+        The gender can also be derived from the name if not explicitly mentioned
+        The season can be one of the following: summer, winter, spring, fall
+        The output must be in JSON format inside the tags <attributes></attributes>
+        
+        If the information of an entity is not available in the input then don't include that entity in the JSON output
+        
+        Begin!
+        
+        Customer input: ${customerInput}.`;
+      const entityExtractionData = await callBedRock(entityExtraction);
+      const entityExtractionRegEx = entityExtractionData.replace(/(\r\n|\n|\r)/gm, "")?.match('<attributes>(.*?)</attributes>')[1];
+      const entities = entityExtractionRegEx ? JSON.parse(entityExtractionRegEx) : "";
+
+      const styleRecommendation = `Use the following pieces of context to generate 5 style recommendations for the customer input at the end.
+        <context>
+        {context}
+        </context>
+        <example>A navy suit with a light blue dress shirt, conservative tie, black oxford shoes, and a leather belt.</example>
+        <example>A lehenga choli set with a crop top, flowing skirt, and dupatta scarf in lively colors and metallic accents.</example>
+        
+        Customer Input: ${customerInput}
+        Each style recommendation must be inside the tags <style></style>.
+        Do not output product physical IDs.
+        Skip the preamble.`;
+      const styleData = await callBedRock(styleRecommendation);
+      const styles = styleData?.replace(/(\r\n|\n|\r)/g, "")?.match(/<style>(.*?)<\/style>/g)?.map((val: string) => val.replace(/<\/?style>/g,''));
       setloading(false);
-      setResult(recipe);
+      setResult(styles);
+
+      const imageBase64s = []
+      for (let i = 0; i < styles.length; i++) {
+        const imageGenration = "Full body view for " + entities["gender"] + " without a face in " + styles[i] + "dslr, ultra quality, dof, film grain, Fujifilm XT3, crystal clear, 8K UHD";
+        const imageBase64 = await getImage(imageGenration);
+        imageBase64s.push(imageBase64);
+      }
+      setImages(imageBase64s);
+
     } catch (e) {
       alert(`An error occurred: ${e}`);
     }
@@ -37,41 +79,44 @@ export default function Home() {
 
       <section className="   w-1/2  mx-auto ">
         <form
-          onSubmit={onSubmit}
+          // onSubmit={onSubmit}
           className=" p-4 flex flex-col items-center gap-4  max-w-full mx-auto"
         >
           <input
             type="text"
-            id="ingredients"
-            name="ingredients"
+            id="prompts"
+            name="prompts"
             required
+            value={customerInput}
+            onChange={(e) => setCustomerInput(e.currentTarget.value)}
             placeholder="Describe your need..."
             className="border border-black  text-gray-900 p-4 rounded-lg max-w-full w-full text-xl "
           />
           <button
-            type="submit"
-            className="  text-white p-2 rounded-lg bg-blue-500   w-1/2 text-xl  "
+            onClick={e => suggestSttles(e)}
+            className="text-white p-2 rounded-lg bg-blue-500 w-1/2 text-xl"
           >
             Generate
           </button>
         </form>
       </section>
       {loading ? (
-        <div className="flex flex-col items-center gap-4 w-1/2  mx-auto ">
-          <h2 className="m-10 font-medium   text-xl   max-w-prose text-blue-600 ">
+        <div className="flex flex-col items-center gap-4 w-1/2  mx-auto">
+          <h2 className="m-10 font-medium   text-xl   max-w-prose text-blue-600">
             Wait for it...
           </h2>
 
         </div>
       ) : (
         <div>
-          {result ? (
-            <section className="    mt-10 mx-auto  border border-black  bg-gray-50  rounded-xl     ">
-              <Card className=" p-4 flex flex-col items-center gap-4  max-w-full mx-auto text-xl  font-semibold    ">
-                <h2 className="whitespace-pre-wrap">{result}</h2>
+          {result?.map((item, index) => (
+            <section className="p-2 mt-2 border border-black  bg-gray-50  rounded-xl w-1/2 items-left inline-block">
+              <Card className="p-4 flex flex-col items-center gap-4  max-w-full mx-auto text-xl  font-semibold">
+                <h2 className="whitespace-pre-wrap">{item.trim()}</h2>
+                {images[index] && <img src={"data:image/png;base64, " + images[index]} width="200px" />}
               </Card>
             </section>
-          ) : null}
+          ))}
         </div>
       )}
     </main>
