@@ -16,7 +16,7 @@ export default function Home() {
   // I am a male consultant in my 30s traveling to New York next week. What kind of outfit should I wear on my first day in the office?
   const [customerInput, setCustomerInput] = useState("");
 
-  const suggestSttles = async (e: any) => {
+  const suggestStyles = async (e: any) => {
     setloading(true);
     e.preventDefault();
     try {
@@ -93,7 +93,7 @@ export default function Home() {
             className="border border-black  text-gray-900 p-4 rounded-lg max-w-full w-full text-xl "
           />
           <button
-            onClick={e => suggestSttles(e)}
+            onClick={e => suggestStyles(e)}
             className="text-white p-2 rounded-lg bg-blue-500 w-1/2 text-xl"
           >
             Generate
@@ -114,6 +114,9 @@ export default function Home() {
               <Card className="p-4 flex flex-col items-center gap-4  max-w-full mx-auto text-xl  font-semibold">
                 <h2 className="whitespace-pre-wrap">{item.trim()}</h2>
                 {images[index] && <img src={"data:image/png;base64, " + images[index]} width="200px" />}
+                <button onClick={e => alert(e)} className="text-white p-2 rounded-lg bg-blue-500 text-xl">
+                  Select
+                </button>
               </Card>
             </section>
           ))}
